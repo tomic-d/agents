@@ -1,5 +1,5 @@
 import divhunt from 'divhunt';
-import agents from '../../addon.js';
+import agents from '#agents/addon.js';
 
 agents.Fn('item.run', async function(agent, goal, data = {})
 {

@@ -1,8 +1,8 @@
-import agents from './addon.js';
+import agents from '#agents/addon.js';
 
 /* Functions */
-import './functions/parse.js';
-import './functions/request.js';
-import './item/functions/run.js';
+import '#agents/functions/parse.js';
+import '#agents/functions/request.js';
+import '#agents/item/functions/run.js';
 
 export default agents;

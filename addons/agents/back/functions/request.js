@@ -1,4 +1,4 @@
-import agents from '../addon.js';
+import agents from '#agents/addon.js';
 
 agents.Fn('request', async function(payload, retry = true)
 {

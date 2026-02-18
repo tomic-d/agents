@@ -1,10 +1,10 @@
-import orchestrator from './addon.js';
+import orchestrator from '#orchestrator/addon.js';
 
 /* Items */
-import './items/agents/planner.js';
-import './items/agents/properties.js';
+import '#orchestrator/items/agents/planner.js';
+import '#orchestrator/items/agents/properties.js';
 
 /* Functions */
-import './item/functions/run.js';
+import '#orchestrator/item/functions/run.js';
 
 export default orchestrator;

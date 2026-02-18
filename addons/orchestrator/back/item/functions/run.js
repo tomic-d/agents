@@ -1,12 +1,12 @@
 import divhunt from 'divhunt';
 import agents from '#agents/load.js';
-import orchestrator from '../../addon.js';
+import orchestrator from '#orchestrator/addon.js';
 
 orchestrator.Fn('item.run', async function(item, goal, data = {})
 {
     const state = {
         goal,
-        data: { ...data },
+        data: { input: data },
         steps: { count: 0, total: item.Get('steps') },
         history: [],
         agents: item.Get('agents'),

@@ -9,6 +9,10 @@
     "type": "git",
     "url": "https://github.com/tomic-d/agents.git"
   },
+  "imports": {
+    "#agents/*": "./addons/agents/back/*",
+    "#orchestrator/*": "./addons/orchestrator/back/*"
+  },
   "dependencies": {
     "divhunt": "^2.0.0"
   }
