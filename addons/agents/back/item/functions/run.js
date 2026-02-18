@@ -108,100 +108,6 @@ agents.Fn('item.run', async function(agent, goal, data = {})
         };
     };
 
-    this.methods.request = async (payload, retry = true) =>
-    {
-        try
-        {
-            const response = await fetch('https://nue.tools.divhunt.com/api/run/ai-chat',
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok)
-            {
-                throw new Error(`API error: ${response.status}`);
-            }
-
-            return await response.json();
-        }
-        catch (error)
-        {
-            if (retry)
-            {
-                return await this.methods.request(payload, false);
-            }
-
-            throw error;
-        }
-    };
-
-    this.methods.parse = (response) =>
-    {
-        let text = response?.data?.response?.trim() || '';
-
-        text = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '');
-
-        const match = text.match(/\{[\s\S]*\}/);
-
-        if (!match)
-        {
-            throw new Error('Invalid JSON response');
-        }
-
-        let json = match[0];
-        let result = '';
-        let inString = false;
-        let escape = false;
-
-        for (let i = 0; i < json.length; i++)
-        {
-            const char = json[i];
-
-            if (escape)
-            {
-                result += char;
-                escape = false;
-                continue;
-            }
-
-            if (char === '\\')
-            {
-                result += char;
-                escape = true;
-                continue;
-            }
-
-            if (char === '"')
-            {
-                inString = !inString;
-                result += char;
-                continue;
-            }
-
-            if (inString)
-            {
-                if (char === '\n') { result += '\\n'; continue; }
-                if (char === '\r') { result += '\\r'; continue; }
-                if (char === '\t') { result += '\\t'; continue; }
-            }
-
-            result += char;
-        }
-
-        try
-        {
-            return JSON.parse(result);
-        }
-        catch (error)
-        {
-            console.log('[PARSE ERROR] Raw response:', text);
-            console.log('[PARSE ERROR] Cleaned result:', result);
-            throw error;
-        }
-    };
-
     this.methods.metadata = (result) =>
     {
         const time = parseFloat(result.time);
@@ -243,10 +149,10 @@ agents.Fn('item.run', async function(agent, goal, data = {})
     {
         agent.Get('onRun') && await agent.Get('onRun')({ payload });
 
-        const result = await this.methods.request(payload);
+        const result = await agents.Fn('request', payload);
         const meta   = this.methods.metadata(result);
 
-        let parsed = this.methods.parse(result);
+        let parsed = agents.Fn('parse', result);
 
         if (agent.Get('callback'))
         {
