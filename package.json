@@ -1,7 +1,7 @@
 {
   "name": "divhunt-agents",
   "version": "0.1.0",
-  "description": "AI agent platform — automate anything with intelligent agents. Open source.",
+  "description": "Open-source AI automation platform. Build, connect, and orchestrate intelligent agents.",
   "type": "module",
   "license": "MIT",
   "author": "Dejan Tomic <hi@iamdejan.com>",
