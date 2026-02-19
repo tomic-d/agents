@@ -191,23 +191,18 @@ orchestrator.Fn('item.state.input', async function(item, state)
         return fields;
     };
 
-    const debug = {};
-
     this.methods.programmatic();
-    debug.programmatic = { matched: { ...matched }, unmatched: [...unmatched] };
 
     if (unmatched.length > 0)
     {
         await this.methods.reference();
         unmatched = unmatched.filter(field => matched[field] === undefined);
-        debug.reference = { matched: { ...matched }, unmatched: [...unmatched] };
     }
 
     if (unmatched.length > 0)
     {
         await this.methods.literal();
         unmatched = unmatched.filter(field => matched[field] === undefined);
-        debug.literal = { matched: { ...matched }, unmatched: [...unmatched] };
     }
 
     for (const field of unmatched)
@@ -219,10 +214,4 @@ orchestrator.Fn('item.state.input', async function(item, state)
     }
 
     state.input = divhunt.DataDefine(matched, agent.Get('input'));
-
-    if (state.debug)
-    {
-        debug.resolved = state.input;
-        state.debug(`step-${state.step}/input`, debug);
-    }
 });

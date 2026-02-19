@@ -15,10 +15,5 @@ orchestrator.Fn('item.state.goal', async function(item, state)
 
     state.goal = results.goal;
 
-    if (state.debug)
-    {
-        state.debug(`step-${state.step}/goal`, { sent, received: results });
-    }
-
     return results;
 });

@@ -1,6 +1,4 @@
 import divhunt from 'divhunt';
-import { mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
-import { join, dirname } from 'node:path';
 import agents from '#agents/load.js';
 import orchestrator from '#orchestrator/addon.js';
 
@@ -25,27 +23,8 @@ orchestrator.Fn('item.run', async function(item, input = {})
         conclusion: null,
 
         steps: { count: 0, total: item.Get('steps') },
-        tokens: { input: 0, output: 0 },
-        debug: null
+        tokens: { input: 0, output: 0 }
     };
-
-    if (item.Get('debug'))
-    {
-        const dir = join(process.cwd(), 'debug', String(item.Get('id')));
-
-        if (existsSync(dir))
-        {
-            rmSync(dir, { recursive: true });
-        }
-
-        state.debug = (file, data) =>
-        {
-            const path = join(dir, `${file}.json`);
-
-            mkdirSync(dirname(path), { recursive: true });
-            writeFileSync(path, JSON.stringify(data, null, 2));
-        };
-    }
 
     item.Set('status', 'running');
     item.Set('state', state);
@@ -63,7 +42,7 @@ orchestrator.Fn('item.run', async function(item, input = {})
 
             state.steps.count++;
             state.step = state.steps.count;
-          
+
             await item.Fn('state.agent', state);
             await item.Fn('state.goal', state);
             await item.Fn('state.input', state);
@@ -84,13 +63,6 @@ orchestrator.Fn('item.run', async function(item, input = {})
         if(!state.done)
         {
             throw divhunt.Error(422, `Max steps (${state.steps.total}) reached without completing task`, {state});
-        }
-
-        if (state.debug)
-        {
-            const { debug, ...clean } = state;
-
-            state.debug('state', clean);
         }
 
         return state;

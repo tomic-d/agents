@@ -11,8 +11,6 @@ const orchestrator = divhunt.Addon('ai.orchestrator', (addon) =>
     addon.Field('agents', ['array', []]);
     addon.Field('status', ['string', 'idle']);
     addon.Field('state', ['object', null]);
-    addon.Field('debug', ['boolean', false]);
-
     addon.Field('onDone', ['function', null]);
     addon.Field('onGoal', ['function', null]);
     addon.Field('onConclusion', ['function', null]);

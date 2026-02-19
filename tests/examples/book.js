@@ -175,7 +175,6 @@ orchestrator.Item({
     },
     steps: 20,
     agents: ['load', 'split', 'analyze', 'synthesize'],
-    debug: true,
     onFail: ({ error }) => console.log(`\n  FAILED: ${error.message}`)
 });
 

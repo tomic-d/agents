@@ -262,7 +262,6 @@ orchestrator.Item({
     },
     steps: 14,
     agents: ['gate', 'scrape', 'scan', 'merge', 'enrich', 'summarize', 'translate', 'notify'],
-    debug: true,
     onFail: ({ error }) => console.log(`\n  FAILED: ${error.message}`)
 });
 

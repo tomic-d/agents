@@ -18,10 +18,5 @@ orchestrator.Fn('item.state.conclusion', async function(item, state)
 
     state.conclusion = results.summary;
 
-    if (state.debug)
-    {
-        state.debug(`step-${state.step}/conclusion`, { sent, received: results });
-    }
-
     return results;
 });

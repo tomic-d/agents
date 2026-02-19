@@ -23,10 +23,5 @@ orchestrator.Fn('item.state.execute', async function(item, state)
         state.tokens.output += _meta.tokens.output || 0;
     }
 
-    if (state.debug)
-    {
-        state.debug(`step-${state.step}/execute`, { agent: state.agent, sent, received: result });
-    }
-
     return result;
 });
