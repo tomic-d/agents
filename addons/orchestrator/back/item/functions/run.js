@@ -18,9 +18,24 @@ orchestrator.Fn('item.run', async function(item, goal, data = {})
     item.Set('status', 'running');
     item.Set('state', state);
 
-    const planner = agents.ItemGet('orchestrator-planner');
-    const reference = agents.ItemGet('orchestrator-reference');
-    const literal = agents.ItemGet('orchestrator-literal');
+    const pipeline = {
+        done: agents.ItemGet('orchestrator-done'),
+        selector: agents.ItemGet('orchestrator-selector'),
+        goal: agents.ItemGet('orchestrator-goal'),
+        conclusion: agents.ItemGet('orchestrator-conclusion'),
+        reference: agents.ItemGet('orchestrator-reference'),
+        literal: agents.ItemGet('orchestrator-literal')
+    };
+
+    this.methods.tokens = (result) =>
+    {
+        if (result.meta)
+        {
+            state.tokens.prompt += result.meta.usage.prompt;
+            state.tokens.completion += result.meta.usage.completion;
+            state.tokens.total += result.meta.usage.total;
+        }
+    };
 
     this.methods.filter = (id) =>
     {
@@ -98,12 +113,24 @@ orchestrator.Fn('item.run', async function(item, goal, data = {})
         {
             const structure = {};
 
-            for (const [key, value] of Object.entries(state.output))
+            for (const [id, output] of Object.entries(state.output))
             {
-                structure[key] = Object.keys(value).filter(k => k !== 'meta' && k !== 'conclusion');
+                const source = agents.ItemGet(id);
+                const outputSchema = source ? source.Get('output') : {};
+
+                structure[id] = Object.keys(output)
+                    .filter(k => k !== 'meta' && k !== 'conclusion')
+                    .map(k => ({
+                        key: k,
+                        type: outputSchema[k]?.type || typeof output[k],
+                        description: outputSchema[k]?.description || null
+                    }));
             }
 
-            structure.input = Object.keys(state.input);
+            structure.input = Object.keys(state.input).map(k => ({
+                key: k,
+                type: typeof state.input[k]
+            }));
 
             const unmatchedSchema = {};
 
@@ -119,14 +146,9 @@ orchestrator.Fn('item.run', async function(item, goal, data = {})
                 input: unmatchedSchema
             };
 
-            const result = await reference.Fn('run', `Map references for ${agent.Get('id')}`, { agent: definition, structure });
+            const result = await pipeline.reference.Fn('run', `Map references for ${agent.Get('id')}`, { agent: definition, structure });
 
-            if (result.meta)
-            {
-                state.tokens.prompt += result.meta.usage.prompt;
-                state.tokens.completion += result.meta.usage.completion;
-                state.tokens.total += result.meta.usage.total;
-            }
+            this.methods.tokens(result);
 
             const data = { input: state.input, ...state.output };
 
@@ -165,14 +187,9 @@ orchestrator.Fn('item.run', async function(item, goal, data = {})
                 input: unmatchedSchema
             };
 
-            const result = await literal.Fn('run', `Extract values for ${agent.Get('id')}`, { agent: definition, goal });
+            const result = await pipeline.literal.Fn('run', `Extract values for ${agent.Get('id')}`, { agent: definition, goal });
 
-            if (result.meta)
-            {
-                state.tokens.prompt += result.meta.usage.prompt;
-                state.tokens.completion += result.meta.usage.completion;
-                state.tokens.total += result.meta.usage.total;
-            }
+            this.methods.tokens(result);
 
             for (const field of unmatched)
             {
@@ -200,21 +217,57 @@ orchestrator.Fn('item.run', async function(item, goal, data = {})
 
     this.methods.plan = async () =>
     {
-        const input = {
-            history: state.history,
-            agents: this.methods.agents()
+        const available = this.methods.agents();
+        const input = { history: state.history, agents: available };
+
+        /* 1. Done check */
+        const doneResult = await pipeline.done.Fn('run', `Check: ${goal}`, input);
+
+        this.methods.tokens(doneResult);
+
+        if (doneResult.done || available.length === 0)
+        {
+            /* 2a. Conclusion */
+            const conclusionResult = await pipeline.conclusion.Fn('run', `Conclude: ${goal}`, { history: state.history });
+
+            this.methods.tokens(conclusionResult);
+
+            state.conclusion = conclusionResult.summary;
+
+            const plan = { done: true, goal: conclusionResult.summary };
+
+            item.Get('onPlanner') && await item.Get('onPlanner')({ plan, input, state });
+
+            return plan;
+        }
+
+        /* 2b. Select agent */
+        const selectResult = await pipeline.selector.Fn('run', `Select for: ${goal}`, input);
+
+        this.methods.tokens(selectResult);
+
+        if (!selectResult.agent || !agents.ItemGet(selectResult.agent))
+        {
+            throw new Error(`Selector picked invalid agent: ${selectResult.agent}`);
+        }
+
+        /* 3. Write goal */
+        const agentItem = agents.ItemGet(selectResult.agent);
+        const agentDef = {
+            id: agentItem.Get('id'),
+            name: agentItem.Get('name'),
+            description: agentItem.Get('description')
         };
 
-        const plan = await planner.Fn('run', `Achieve: ${goal}`, input);
+        const goalResult = await pipeline.goal.Fn('run', `Goal for: ${goal}`, { agent: agentDef, history: state.history });
 
-        state.conclusion = plan.conclusion;
+        this.methods.tokens(goalResult);
 
-        if (plan.meta)
-        {
-            state.tokens.prompt += plan.meta.usage.prompt;
-            state.tokens.completion += plan.meta.usage.completion;
-            state.tokens.total += plan.meta.usage.total;
-        }
+        const plan = {
+            done: false,
+            agent: selectResult.agent,
+            goal: goalResult.goal
+        };
 
         item.Get('onPlanner') && await item.Get('onPlanner')({ plan, input, state });
 
@@ -236,12 +289,7 @@ orchestrator.Fn('item.run', async function(item, goal, data = {})
 
         const result = await agent.Fn('run', plan.goal, input);
 
-        if (result.meta)
-        {
-            state.tokens.prompt += result.meta.usage.prompt;
-            state.tokens.completion += result.meta.usage.completion;
-            state.tokens.total += result.meta.usage.total;
-        }
+        this.methods.tokens(result);
 
         state.output[agent.Get('id')] = result;
 
