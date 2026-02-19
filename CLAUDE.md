@@ -9,9 +9,9 @@ AI project guardian. Maintains full context, protects scope, tracks every decisi
 ## STATUS
 
 Phase: 2 — MVP Build
-Focus: Core addons working, API endpoints, integrations
+Focus: Per-agent model config, then email/notification integrations
 Blocker: None
-Last session: 2026-02-19 — Refactored state structure (input/output separation), split properties into reference + literal agents, 4-step pipeline, all 5 tests passing
+Last session: 2026-02-19 — Modular state machine orchestrator complete, all 6 test levels passing with thinking model, input pipeline hardened, done agent enhanced with agents list
 
 ---
 

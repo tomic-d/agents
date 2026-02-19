@@ -26,18 +26,31 @@ addons/
     load.js                       — Loader (registers functions)
     functions/
       parse.js                    — JSON parser for AI responses (sanitizes, extracts JSON)
-      request.js                  — HTTP client for AI API (with retry)
+      request.js                  — HTTP client for AI API (OpenAI-compatible, with retry)
     item/functions/
       run.js                      — Agent execution (prompt building, validation, lifecycle hooks)
   orchestrator/back/              — Multi-agent orchestration addon
-    addon.js                      — Addon definition (fields: steps, agents, status, state, hooks)
+    addon.js                      — Addon definition (fields: steps, agents, task, hooks)
     load.js                       — Loader (registers items + functions)
     items/agents/
-      planner.js                  — AI agent that decides which agent to run next
-      properties.js               — Reference agent: maps unmatched fields to data keys (structure only)
-      literal.js                  — Literal agent: extracts values from goal text
+      done.js                     — Checks if orchestration goal is achieved
+      agent.js                    — Selects the next agent to execute
+      goal.js                     — Writes a focused goal for the current step
+      reference.js                — Maps unmatched fields to data references (structure keys)
+      literal.js                  — Extracts literal values from goal/history for unmatched fields
+      conclusion.js               — Writes a one-sentence summary of what an agent produced
     item/functions/
-      run.js                      — Orchestration loop (plan → properties → execute → repeat)
+      run.js                      — Orchestration state machine loop
+      state/
+        done.js                   — Done check state handler
+        agent.js                  — Agent selection state handler
+        goal.js                   — Goal writing state handler
+        input.js                  — Input pipeline (programmatic → reference → literal → default)
+        execute.js                — Agent execution state handler
+        conclusion.js             — Conclusion writing state handler
+tests/
+  agents/                         — Single agent tests
+  orchestrators/                  — Multi-agent orchestrator tests (levels 1-6)
 ```
 
 ## Import Aliases (package.json)
@@ -54,23 +67,38 @@ addons/
 
 ## Orchestrator Flow
 
-1. Define orchestrator with `orchestrator.Item({ id, steps, agents, hooks })`
-2. Run with `orch.Fn('run', goal, data)`
-3. State: `state.input` (initial data), `state.output` (agent results by ID)
-4. Loop: planner picks agent → properties pipeline → agent executes → result stored in `state.output[agent-id]`
-5. Planner decides when goal is achieved
+1. Define orchestrator with `orchestrator.Item({ id, task, steps, agents, input })`
+2. Run with `orch.Fn('run', input)`
+3. State machine loop per step: **done → agent → goal → input → execute → conclusion**
+4. `state.agents` — enriched array of `{id, description}` (null agents filtered)
+5. `state.history` — array of `{step, agent, goal, conclusion, input, output}` per step
+6. Loop ends when done agent returns `true` or max steps reached
 
-## Properties Pipeline (4-step)
+## State Machine Steps
 
-1. **Programmatic** — exact field name match across `state.output` (newest-first) then `state.input`
-2. **Reference agent** — receives structure map (key names only, no values), returns `@key.path` references for semantic mismatches
-3. **Literal agent** — receives goal text, extracts values mentioned in goal for remaining unmatched fields
+1. **Done** — checks task + conclusions + available agents list → `true`/`false`
+2. **Agent** — selects next agent from available list based on task and history
+3. **Goal** — writes focused goal for selected agent (max 15 words)
+4. **Input** — 4-step pipeline resolves agent input fields
+5. **Execute** — runs the selected agent with resolved input
+6. **Conclusion** — writes one-sentence summary of what agent produced
+
+## Input Pipeline (4-step)
+
+1. **Programmatic** — exact field name match across history outputs (newest-first) then orchestrator input
+2. **Reference agent** — receives structure map (`agent:key` format, no values), maps unmatched fields to data sources
+3. **Literal agent** — reads goal text + history conclusions, extracts values for remaining unmatched fields
 4. **Schema default** — `definition.value` as last fallback
-5. Result validated against agent input schema via `DataDefine`
+5. `unmatched` array filtered after each step to prevent overwrites
+6. Result validated against agent input schema via `DataDefine`
+
+## Schema Shape Format
+
+Consistent across all orchestrator agents: `"key": "*type - description"` (prefix `*` for required fields)
 
 ## Key Decisions Pending
 
 - [ ] Self-hosted vs cloud deployment?
 - [ ] Single monolith or split services from the start?
-- [ ] Which LLM provider for production? (cost vs quality)
+- [ ] Per-agent model config (`model: {endpoint, api, name}`)
 - [ ] WhatsApp Business API vs Twilio vs alternative?

@@ -18,6 +18,11 @@
 - [x] Build orchestrator addon (planner, properties, run loop)
 - [x] Add import aliases (#agents/*, #orchestrator/*)
 - [x] Fix orchestrator properties mapping (hybrid: programmatic + AI fallback)
+- [x] Rewrite orchestrator into modular state machine (6 agents, state/ handlers)
+- [x] Fix input pipeline (unmatched filtering, agent+fields separation)
+- [x] Done agent receives available agents list
+- [x] All 6 test levels passing (1-6 agents, thinking model)
+- [ ] Per-agent model config (`model: {endpoint, api, name}`)
 - [ ] Research Gmail API (OAuth flow, rate limits, pricing)
 - [ ] Research WhatsApp Business API / Twilio (pricing, approval process)
 - [ ] Research LLM options for email classification (cost per call, quality)

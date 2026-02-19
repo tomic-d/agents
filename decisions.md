@@ -121,3 +121,48 @@
 **Rejected alternatives:**
 - Single combined agent — mixed instructions, less reliable on small models
 - Two agents without programmatic — unnecessary AI calls for exact name matches
+
+---
+
+## D013 — Modular state machine orchestrator
+**Date:** 2026-02-19
+**Decision:** Rewrite orchestrator from monolithic planner loop into modular state machine with 6 focused agents: done, agent, goal, reference, literal, conclusion. Each step in its own file under `state/`.
+**Reason:** Single planner agent doing everything (agent selection + goal writing + completion check) was unreliable on small models. Splitting into focused agents with clear instructions gives better results.
+**Rejected alternatives:**
+- Single planner agent — too many responsibilities, small models confused
+- Fewer agents (combine done+agent) — tested, worse results
+
+---
+
+## D014 — Separate agent context and fields params
+**Date:** 2026-02-19
+**Decision:** Reference and literal agents receive two separate params: `agent: {id, description}` for context and `fields: {...}` for work items, instead of a single combined `agent` param.
+**Reason:** Small models nested output values under an "agent" key when the param was named "agent" and contained both context and field definitions. Separating eliminates confusion.
+**Rejected alternatives:**
+- Rename single param to "target" — still mixes concerns
+
+---
+
+## D015 — Done agent receives available agents list
+**Date:** 2026-02-19
+**Decision:** Pass `state.agents` (array of `{id, description}`) to the done agent alongside task and conclusions.
+**Reason:** Without seeing available agents, done agent would mark task complete after writing HTML even though CSS and combine agents hadn't run. With the agents list, it can check which agents are available but unused.
+**Rejected alternatives:**
+- Require explicit steps in task text — puts burden on user, fragile
+
+---
+
+## D016 — Flat reference format (agent:key)
+**Date:** 2026-02-19
+**Decision:** Use flat `agent:key` format for data references instead of nested `@agent.key` notation.
+**Reason:** Simpler parsing (single split on `:`), consistent with structure map keys. Small models handle it better.
+**Rejected alternatives:**
+- `@agent.key` notation — requires regex parsing, more complex for small models
+
+---
+
+## D017 — Thinking model for orchestrator, fast model for workers
+**Date:** 2026-02-19
+**Decision:** Use thinking/reasoning model (e.g. qwen3-next 80b) for orchestrator agents, fast model for user-defined worker agents.
+**Reason:** Orchestrator agents (done, agent, goal, reference, literal, conclusion) need reasoning to make correct decisions. Worker agents (search, translate, sentiment) do concrete tasks where speed matters more. Tested: 14B model fails on 4+ agent pipelines, thinking 80B model passes all 6 levels cleanly.
+**Context:** Per-agent model config planned as next feature.
