@@ -1,8 +1,8 @@
 import agents from '#agents/load.js';
 
 agents.Item({
-    id: 'orchestrator-selector',
-    name: 'Orchestrator Selector',
+    id: 'orchestrator-agent',
+    name: 'Orchestrator Agent',
     description: 'Selects the next agent to execute',
     instructions: `
         Select the best next agent from the available list.
@@ -12,15 +12,16 @@ agents.Item({
         2. Pick the agent that should logically execute next
         3. Agent ID must be an EXACT match from the agents list
         4. Consider dependencies — some agents need output from others
-
-        OUTPUT FORMAT:
-        { "agent": "exact-agent-id", "conclusion": "Done: ..." }
     `,
-    tokens: 300,
+    tokens: 150,
     input: {
+        task: {
+            type: 'string',
+            description: 'Original task to accomplish'
+        },
         history: {
             type: 'array',
-            description: 'Execution history with agent and conclusion for each step'
+            description: 'Execution history with agent ID and output for each step'
         },
         agents: {
             type: 'array',

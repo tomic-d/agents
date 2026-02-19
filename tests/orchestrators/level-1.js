@@ -19,7 +19,7 @@ agents.Item({
     },
     output: {
         priority: { type: 'string', description: 'high, medium, or low' },
-        category: { type: 'string', description: 'Category like invoice, newsletter, personal, work' }
+        category: { type: 'string', description: 'Category like newsletter, personal, work or other' }
     }
 });
 
@@ -27,18 +27,26 @@ console.log('\n=== Level 1: Single Agent (Email Classifier) ===\n');
 
 orchestrator.Item({
     id: 'level-1',
+    task: 'Classify this email into one of provided categories',
+    input: {
+        subject: 'Invoice #4521 — Payment overdue',
+        body: 'Dear customer, this is PERSONAL work and your invoice of 2,450 EUR is 15 days overdue. Please process payment immediately to avoid late fees.'
+    },
     steps: 3,
     agents: ['classify'],
-    onPlanner: ({ plan }) => console.log('Plan:', JSON.stringify(plan)),
-    onAgent: ({ agent, goal }) => console.log(`Running: ${agent} — ${goal}`),
-    onSuccess: ({ state }) => console.log('Tokens:', state.tokens)
+    onFail: ({ error }) => console.log(`\n  FAILED: ${error.message}`)
 });
 
 const orch = orchestrator.ItemGet('level-1');
-const state = await orch.Fn('run', 'Classify this email into one of provided categories', {
-    subject: 'Invoice #4521 — Payment overdue',
-    body: 'Dear customer, your invoice of 2,450 EUR is 15 days overdue. Please process payment immediately to avoid late fees.'
-});
 
-console.log('\nRESULT:', JSON.stringify({ priority: state.output.classify?.priority, category: state.output.classify?.category }));
-console.log('PASS');
+try
+{
+    const state = await orch.Fn('run');
+
+    console.log('\n  result:', JSON.stringify({ priority: state.output?.priority, category: state.output?.category }));
+    console.log('\nPASS');
+}
+catch (error)
+{
+    console.log('error');
+}

@@ -5,19 +5,19 @@ agents.Item({
     name: 'Orchestrator Goal',
     description: 'Writes a specific goal for the next agent to execute',
     instructions: `
-        Write a specific, concise goal for the selected agent.
+        Write a short goal for the selected agent.
 
         RULES:
-        1. The goal must be specific to the agent's purpose
-        2. Include relevant context from history if needed
-        3. Keep concise — max 15 words
-        4. Tell the agent exactly what to do
-
-        OUTPUT FORMAT:
-        { "goal": "specific task description", "conclusion": "Done: ..." }
+        1. Max 15 words
+        2. Preserve concrete values — names, topics, numbers
+        3. No markdown, no formatting, plain text only
     `,
-    tokens: 300,
+    tokens: 100,
     input: {
+        task: {
+            type: 'string',
+            description: 'Original task to accomplish'
+        },
         agent: {
             type: 'object',
             description: 'Selected agent (id, name, description)'

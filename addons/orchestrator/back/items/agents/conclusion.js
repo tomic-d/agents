@@ -5,21 +5,31 @@ agents.Item({
     name: 'Orchestrator Conclusion',
     description: 'Writes a final summary of what was accomplished',
     instructions: `
-        Summarize what was accomplished across all steps.
+        Summarize what was done in one short sentence, past tense.
 
         RULES:
-        1. Read all conclusions from history
-        2. Write a concise final summary
-        3. Include key results and outcomes
-
-        OUTPUT FORMAT:
-        { "summary": "what was accomplished", "conclusion": "Done: ..." }
+        1. Max 15 words
+        2. Describe ONLY what this agent produced, not the broader task
+        3. Base your summary strictly on the output fields, do not assume or add steps that did not happen
+        4. No markdown, no formatting, plain text only
     `,
-    tokens: 500,
+    tokens: 100,
     input: {
+        task: {
+            type: 'string',
+            description: 'Original task to accomplish'
+        },
+        agent: {
+            type: 'string',
+            description: 'ID of the agent that just executed'
+        },
         history: {
             type: 'array',
             description: 'Complete execution history'
+        },
+        output: {
+            type: 'object',
+            description: 'Output from the last executed agent'
         }
     },
     output: {

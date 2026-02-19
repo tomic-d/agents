@@ -14,6 +14,7 @@ agents.Item({
     name: 'German Translator',
     description: 'Translates text to German',
     instructions: 'Translate the given text to German. Return only the translation.',
+    tokens: 500,
     input: {
         text: { type: 'string', required: true, description: 'Text to translate' }
     },
@@ -27,6 +28,7 @@ agents.Item({
     name: 'French Translator',
     description: 'Translates text to French',
     instructions: 'Translate the given text to French. Return only the translation.',
+    tokens: 500,
     input: {
         text: { type: 'string', required: true, description: 'Text to translate' }
     },
@@ -40,6 +42,7 @@ agents.Item({
     name: 'Translation Comparator',
     description: 'Compares two translations and picks the more elegant one',
     instructions: 'Compare the two translations. Pick the more elegant one and explain why in one sentence.',
+    tokens: 500,
     input: {
         german: { type: 'string', required: true, description: 'German translation' },
         french: { type: 'string', required: true, description: 'French translation' }
@@ -54,14 +57,22 @@ console.log('\n=== Level 3: Translate DE + FR \u2192 Compare (semantic mismatch)
 
 orchestrator.Item({
     id: 'level-3',
+    task: 'Translate "The sun sets behind the mountains" to German and French, then compare which translation is more elegant',
+    input: { text: 'The sun sets behind the mountains' },
     steps: 6,
-    onPlanner: ({ plan }) => console.log('Plan:', JSON.stringify(plan)),
-    onAgent: ({ agent, goal }) => console.log(`Running: ${agent} \u2014 ${goal}`),
-    onSuccess: ({ state }) => console.log('Tokens:', state.tokens)
+    agents: ['translate-german', 'translate-french', 'compare'],
+    onFail: ({ error }) => console.log(`\n  FAILED: ${error.message}`)
 });
 
 const orch = orchestrator.ItemGet('level-3');
-const state = await orch.Fn('run', 'Translate "The sun sets behind the mountains" to German and French, then compare which translation is more elegant', { text: 'The sun sets behind the mountains' });
 
-console.log('\nRESULT:', JSON.stringify({ winner: state.output.compare?.winner, reason: state.output.compare?.reason?.slice(0, 80) }));
-console.log('PASS');
+try
+{
+    const state = await orch.Fn('run');
+
+    console.log(state);
+}
+catch (error)
+{
+    console.log('error');
+}

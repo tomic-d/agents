@@ -55,19 +55,26 @@ agents.Item({
     }
 });
 
-console.log('\n=== Level 4: Search \u2192 Translate \u2192 Format (literal + defaults + reference) ===\n');
+console.log('\n=== Level 4: Search → Translate → Format (literal + defaults + reference) ===\n');
 
 orchestrator.Item({
     id: 'level-4',
+    task: 'First search for 5 articles about machine learning, then translate the results to Spanish, then format the translated results as a bullet list',
+    input: { query: 'machine learning' },
     steps: 8,
-    onPlanner: ({ plan }) => console.log('Plan:', JSON.stringify(plan)),
-    onAgent: ({ agent, goal }) => console.log(`Running: ${agent} \u2014 ${goal}`),
-    onProperties: ({ properties }) => console.log('Properties:', JSON.stringify(properties)),
-    onSuccess: ({ state }) => console.log('Tokens:', state.tokens)
+    agents: ['search', 'translate-results', 'format-output'],
+    onFail: ({ error }) => console.log(`\n  FAILED: ${error.message}`)
 });
 
 const orch = orchestrator.ItemGet('level-4');
-const state = await orch.Fn('run', 'Search for 5 articles about machine learning, translate them to Spanish, and format as a list', { query: 'machine learning' });
 
-console.log('\nRESULT:', state.output['format-output']?.output?.slice(0, 150) + '...');
-console.log('PASS');
+try
+{
+    const state = await orch.Fn('run');
+
+    console.log(state);
+}
+catch (error)
+{
+    console.log('error');
+}

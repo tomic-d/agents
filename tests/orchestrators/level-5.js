@@ -5,32 +5,32 @@ import orchestrator from '#orchestrator/load.js';
    LEVEL 5: Full Pipeline Stress Test
    - 5 agents, complex data flow
    - Multiple semantic mismatches (reference agent called multiple times)
-   - Literal value from goal ("top 8 keywords" → max: 8)
+   - Literal value from goal ("top 8 keywords" -> max: 8)
    - Default value fallback (style: "professional")
    - Mixed types: string, number, array
    - Planner must figure out correct execution order
    - Some agents share field names, some don't
 
    Pipeline:
-   parse-article → extract-keywords → sentiment → categorize → write-summary
+   parse-article -> extract-keywords -> sentiment -> categorize -> write-summary
 
    Semantic mismatches:
-   - extract-keywords.content → @parse-article.body
-   - sentiment.text → @parse-article.body
-   - categorize.mood → @sentiment.mood
-   - write-summary.headline → @parse-article.title
-   - write-summary.language → @extract-keywords.language
+   - extract-keywords.content -> @parse-article.body
+   - sentiment.text -> @parse-article.body
+   - categorize.mood -> @sentiment.mood
+   - write-summary.headline -> @parse-article.title
+   - write-summary.language -> @extract-keywords.language
 
    Literal from goal:
-   - extract-keywords.max → 8 (from "top 8 keywords")
+   - extract-keywords.max -> 8 (from "top 8 keywords")
 
    Default:
-   - write-summary.style → "professional"
+   - write-summary.style -> "professional"
 
    Programmatic:
-   - sentiment.keywords → extract-keywords.keywords
-   - categorize.keywords, score → programmatic
-   - write-summary.category, tags, confidence → programmatic
+   - sentiment.keywords -> extract-keywords.keywords
+   - categorize.keywords, score -> programmatic
+   - write-summary.category, tags, confidence -> programmatic
    ======================================== */
 
 agents.Item({
@@ -117,24 +117,22 @@ console.log('\n=== Level 5: Full Pipeline (5 agents, all 4 property steps) ===\n
 
 orchestrator.Item({
     id: 'level-5',
+    task: 'Analyze this article: parse it, extract top 8 keywords, analyze sentiment, categorize it, and write a summary',
+    input: { url: 'https://example.com/articles/ai-revolution-2026' },
     steps: 12,
-    onPlanner: ({ plan }) => console.log('Plan:', JSON.stringify(plan)),
-    onAgent: ({ agent, goal }) => console.log(`Running: ${agent} — ${goal}`),
-    onProperties: ({ properties }) => console.log('Properties:', Object.fromEntries(
-        Object.entries(properties).map(([k, v]) => [k, typeof v === 'string' && v.length > 50 ? v.slice(0, 50) + '...' : v])
-    )),
-    onSuccess: ({ state }) => console.log('Tokens:', state.tokens)
+    agents: ['parse-article', 'extract-keywords', 'sentiment', 'categorize', 'write-summary'],
+    onFail: ({ error }) => console.log(`\n  FAILED: ${error.message}`)
 });
 
 const orch = orchestrator.ItemGet('level-5');
-const state = await orch.Fn('run', 'Analyze this article: parse it, extract top 8 keywords, analyze sentiment, categorize it, and write a summary', {
-    url: 'https://example.com/articles/ai-revolution-2026'
-});
 
-console.log('\n--- Results ---');
-console.log('Title:', state.output['parse-article']?.title);
-console.log('Keywords:', state.output['extract-keywords']?.keywords);
-console.log('Mood:', state.output.sentiment?.mood, '— Score:', state.output.sentiment?.score);
-console.log('Category:', state.output.categorize?.category, '— Tags:', state.output.categorize?.tags);
-console.log('Summary:', state.output['write-summary']?.summary?.slice(0, 150) + '...');
-console.log('\nPASS');
+try
+{
+    const state = await orch.Fn('run');
+
+    console.log(state);
+}
+catch (error)
+{
+    console.log('error');
+}

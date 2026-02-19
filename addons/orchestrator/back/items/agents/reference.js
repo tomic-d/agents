@@ -5,28 +5,22 @@ agents.Item({
     name: 'Orchestrator Reference',
     description: 'Maps unmatched fields to data references using structure keys',
     instructions: `
-        Match agent input fields to available data using the structure map.
+        Match agent input fields to available references.
 
-        The structure map shows which keys exist under each data source with type and description — no actual values.
-        Your job: find the best matching key path for each unmatched field by comparing type, description, and key name.
+        The structure map has references as keys (e.g. search:results) with their type and description.
+        Pick the best matching reference for each unmatched field.
 
         RULES:
-        1. Look at each field in the agent's input schema (name, type, description)
-        2. Find the best matching key in the structure map (compare type + description + key name)
-        3. Return a reference string: @{source}.{key}
-        4. If no match exists → use null
-
-        OUTPUT FORMAT:
-        { "properties": { "fieldName": "@source.key" }, "conclusion": "Done: ..." }
-
-        EXAMPLES:
-        - Agent needs "german" (string), structure has translate-german: [{ key: "translation", type: "string", description: "German translation" }] → { "properties": { "german": "@translate-german.translation" } }
-        - Agent needs "entries" (array, "text entries"), structure has search: [{ key: "results", type: "array", description: "Array of result titles" }] → { "properties": { "entries": "@search.results" } }
-        - Agent needs "text", structure has input: [{ key: "text", type: "string" }] → { "properties": { "text": "@input.text" } }
-        - No match → { "properties": { "field": null } }
+        1. Compare field type and description with available references
+        2. Copy the reference key exactly as the value
+        3. If no match exists → use null
     `,
     tokens: 500,
     input: {
+        task: {
+            type: 'string',
+            description: 'Original task to accomplish'
+        },
         agent: {
             type: 'object',
             description: 'Target agent (id, name, description, input schema)'
@@ -37,7 +31,7 @@ agents.Item({
         }
     },
     output: {
-        properties: {
+        values: {
             type: 'object',
             description: 'Mapped references for each field'
         }

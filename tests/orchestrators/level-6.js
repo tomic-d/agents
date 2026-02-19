@@ -3,13 +3,13 @@ import orchestrator from '#orchestrator/load.js';
 
 /* ========================================
    LEVEL 6: HTML + CSS Section Builder
-   - 4 agents: plan → html → css → combine
+   - 4 agents: plan -> html -> css -> combine
    - Code generation (HTML/CSS strings)
    - Semantic mismatches:
-     - write-css.code → @write-html.html
-     - write-css.theme → @plan-section.theme
-     - combine.markup → @write-html.html
-     - combine.styles → @write-css.css
+     - write-css.code -> @write-html.html
+     - write-css.theme -> @plan-section.theme
+     - combine.markup -> @write-html.html
+     - combine.styles -> @write-css.css
    - Literal from goal: section type ("hero")
    - Tests AI generating actual usable code
    ======================================== */
@@ -77,25 +77,22 @@ console.log('\n=== Level 6: HTML + CSS Section Builder (4 agents, code generatio
 
 orchestrator.Item({
     id: 'level-6',
+    task: 'Build a dark-themed hero section for a tech startup landing page with a heading, subtitle, and call-to-action button',
+    input: { brief: 'Tech startup landing page hero section. Dark theme. Bold heading, short subtitle, one CTA button. Modern, clean design.' },
     steps: 10,
-    onPlanner: ({ plan }) => console.log('Plan:', JSON.stringify(plan)),
-    onAgent: ({ agent, goal }) => console.log(`Running: ${agent} — ${goal}`),
-    onProperties: ({ properties }) => console.log('Properties:', Object.fromEntries(
-        Object.entries(properties).map(([k, v]) => [k, typeof v === 'string' && v.length > 60 ? v.slice(0, 60) + '...' : v])
-    )),
-    onSuccess: ({ state }) => console.log('Tokens:', state.tokens)
+    agents: ['plan-section', 'write-html', 'write-css', 'combine'],
+    onFail: ({ error }) => console.log(`\n  FAILED: ${error.message}`)
 });
 
 const orch = orchestrator.ItemGet('level-6');
-const state = await orch.Fn('run', 'Build a dark-themed hero section for a tech startup landing page with a heading, subtitle, and call-to-action button', {
-    brief: 'Tech startup landing page hero section. Dark theme. Bold heading, short subtitle, one CTA button. Modern, clean design.'
-});
 
-console.log('\n--- Results ---');
-console.log('Elements:', state.output['plan-section']?.elements);
-console.log('Layout:', state.output['plan-section']?.layout);
-console.log('Theme:', state.output['plan-section']?.theme);
-console.log('\nHTML preview:', state.output['write-html']?.html?.slice(0, 200) + '...');
-console.log('\nCSS preview:', state.output['write-css']?.css?.slice(0, 200) + '...');
-console.log('\nFull page length:', state.output.combine?.page?.length, 'chars');
-console.log('\nPASS');
+try
+{
+    const state = await orch.Fn('run');
+
+    console.log(state);
+}
+catch (error)
+{
+    console.log('error');
+}
