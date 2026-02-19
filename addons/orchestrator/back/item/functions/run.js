@@ -6,7 +6,8 @@ orchestrator.Fn('item.run', async function(item, goal, data = {})
 {
     const state = {
         goal,
-        data: { input: data },
+        input: data,
+        output: {},
         steps: { count: 0, total: item.Get('steps') },
         history: [],
         agents: item.Get('agents'),
@@ -18,7 +19,8 @@ orchestrator.Fn('item.run', async function(item, goal, data = {})
     item.Set('state', state);
 
     const planner = agents.ItemGet('orchestrator-planner');
-    const properties = agents.ItemGet('orchestrator-properties');
+    const reference = agents.ItemGet('orchestrator-reference');
+    const literal = agents.ItemGet('orchestrator-literal');
 
     this.methods.filter = (id) =>
     {
@@ -54,30 +56,146 @@ orchestrator.Fn('item.run', async function(item, goal, data = {})
 
     this.methods.properties = async (agent, goal) =>
     {
-        const context = typeof agent.Get('context') === 'function'
-            ? agent.Get('context')({ state, goal })
-            : agent.Get('context');
+        const schema = agent.Get('input');
+        const matched = {};
+        const defaults = {};
+        let unmatched = [];
 
-        const definition = {
-            id: agent.Get('id'),
-            name: agent.Get('name'),
-            description: agent.Get('description'),
-            input: agent.Get('input'),
-            context
-        };
-
-        const result = await properties.Fn('run', `Prepare inputs for ${agent.Get('id')}`, { goal, agent: definition, data: state.data });
-
-        if (result._meta)
+        for (const [field, definition] of Object.entries(schema))
         {
-            state.tokens.prompt += result._meta.usage.prompt;
-            state.tokens.completion += result._meta.usage.completion;
-            state.tokens.total += result._meta.usage.total;
+            if (definition.value !== undefined)
+            {
+                defaults[field] = definition.value;
+            }
+
+            let found = false;
+
+            for (let i = state.history.length - 1; i >= 0; i--)
+            {
+                const output = state.output[state.history[i].agent];
+
+                if (output && output[field] !== undefined && field !== 'meta' && field !== 'conclusion')
+                {
+                    matched[field] = output[field];
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found && state.input && state.input[field] !== undefined)
+            {
+                matched[field] = state.input[field];
+                found = true;
+            }
+
+            if (!found)
+            {
+                unmatched.push(field);
+            }
         }
 
-        item.Get('onProperties') && await item.Get('onProperties')({ agent: definition, properties: result.properties, state });
+        if (unmatched.length > 0)
+        {
+            const structure = {};
 
-        return divhunt.DataDefine(result.properties, agent.Get('input'));
+            for (const [key, value] of Object.entries(state.output))
+            {
+                structure[key] = Object.keys(value).filter(k => k !== 'meta' && k !== 'conclusion');
+            }
+
+            structure.input = Object.keys(state.input);
+
+            const unmatchedSchema = {};
+
+            for (const field of unmatched)
+            {
+                unmatchedSchema[field] = schema[field];
+            }
+
+            const definition = {
+                id: agent.Get('id'),
+                name: agent.Get('name'),
+                description: agent.Get('description'),
+                input: unmatchedSchema
+            };
+
+            const result = await reference.Fn('run', `Map references for ${agent.Get('id')}`, { agent: definition, structure });
+
+            if (result.meta)
+            {
+                state.tokens.prompt += result.meta.usage.prompt;
+                state.tokens.completion += result.meta.usage.completion;
+                state.tokens.total += result.meta.usage.total;
+            }
+
+            const data = { input: state.input, ...state.output };
+
+            for (const field of unmatched)
+            {
+                const ref = result.properties?.[field];
+
+                if (typeof ref === 'string' && ref.startsWith('@'))
+                {
+                    const expression = ref.slice(1).replace(/^([^.]+)/, "data['$1']");
+                    const resolved = divhunt.Function(expression, { data }, true);
+
+                    if (resolved !== undefined)
+                    {
+                        matched[field] = resolved;
+                    }
+                }
+            }
+
+            unmatched = unmatched.filter(f => matched[f] === undefined);
+        }
+
+        if (unmatched.length > 0)
+        {
+            const unmatchedSchema = {};
+
+            for (const field of unmatched)
+            {
+                unmatchedSchema[field] = schema[field];
+            }
+
+            const definition = {
+                id: agent.Get('id'),
+                name: agent.Get('name'),
+                description: agent.Get('description'),
+                input: unmatchedSchema
+            };
+
+            const result = await literal.Fn('run', `Extract values for ${agent.Get('id')}`, { agent: definition, goal });
+
+            if (result.meta)
+            {
+                state.tokens.prompt += result.meta.usage.prompt;
+                state.tokens.completion += result.meta.usage.completion;
+                state.tokens.total += result.meta.usage.total;
+            }
+
+            for (const field of unmatched)
+            {
+                if (result.properties?.[field] !== undefined && result.properties[field] !== null)
+                {
+                    matched[field] = result.properties[field];
+                }
+            }
+
+            unmatched = unmatched.filter(f => matched[f] === undefined);
+        }
+
+        for (const field of unmatched)
+        {
+            if (defaults[field] !== undefined)
+            {
+                matched[field] = defaults[field];
+            }
+        }
+
+        item.Get('onProperties') && await item.Get('onProperties')({ properties: matched, state });
+
+        return divhunt.DataDefine(matched, schema);
     };
 
     this.methods.plan = async () =>
@@ -118,14 +236,14 @@ orchestrator.Fn('item.run', async function(item, goal, data = {})
 
         const result = await agent.Fn('run', plan.goal, input);
 
-        if (result._meta)
+        if (result.meta)
         {
-            state.tokens.prompt += result._meta.usage.prompt;
-            state.tokens.completion += result._meta.usage.completion;
-            state.tokens.total += result._meta.usage.total;
+            state.tokens.prompt += result.meta.usage.prompt;
+            state.tokens.completion += result.meta.usage.completion;
+            state.tokens.total += result.meta.usage.total;
         }
 
-        state.data[agent.Get('id')] = result;
+        state.output[agent.Get('id')] = result;
 
         state.history.push({
             step: state.steps.count,

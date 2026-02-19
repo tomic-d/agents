@@ -7,13 +7,25 @@
 ## Phase 1: Planning
 
 - [x] Create project structure (CLAUDE.md + files)
-- [ ] Finalize brief — review with Dejan, lock it
-- [ ] Define architecture — stack, deployment, code structure
+- [x] Finalize brief
+- [x] Define architecture — initial draft with code structure
 - [ ] Resolve legal relationship with Divhunt GmbH (Marko/Hangama)
+
+## Phase 2: MVP Build
+
+- [x] Set up entry point (index.js + HTTP server)
+- [x] Build agents addon (definition, run, parse, request)
+- [x] Build orchestrator addon (planner, properties, run loop)
+- [x] Add import aliases (#agents/*, #orchestrator/*)
+- [x] Fix orchestrator properties mapping (hybrid: programmatic + AI fallback)
 - [ ] Research Gmail API (OAuth flow, rate limits, pricing)
 - [ ] Research WhatsApp Business API / Twilio (pricing, approval process)
 - [ ] Research LLM options for email classification (cost per call, quality)
 - [ ] Define pricing model (free tier? how many emails? how many notifications?)
+- [ ] Build email reader agent (Gmail OAuth + classification)
+- [ ] Build notification agent (WhatsApp via Twilio)
+- [ ] API endpoints (auth, settings, agent status)
+- [ ] Dashboard (user configures what "important" means)
 
 ## Later (not now)
 

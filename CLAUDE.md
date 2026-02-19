@@ -8,10 +8,10 @@ AI project guardian. Maintains full context, protects scope, tracks every decisi
 
 ## STATUS
 
-Phase: 1 — Planning
-Focus: Product definition, brief, architecture
+Phase: 2 — MVP Build
+Focus: Core addons working, API endpoints, integrations
 Blocker: None
-Last session: 2026-02-18 — Project created, initial structure set up
+Last session: 2026-02-19 — Refactored state structure (input/output separation), split properties into reference + literal agents, 4-step pipeline, all 5 tests passing
 
 ---
 
@@ -100,6 +100,11 @@ Behavior:
 - **decisions.md** — Every decision, immediately, no exceptions.
 - **tasks.md** — Updated when a task is completed, added, or reprioritized.
 - **progress.md** — Updated when a milestone is reached.
+
+### Git
+- Never add Co-Authored-By or any co-author lines to commit messages
+- All commits are authored solely by Dejan Tomic
+- Use SSH remote: git@github-iamdejan:tomic-d/agents.git
 
 ### Communication
 - Serbian or English, match the user

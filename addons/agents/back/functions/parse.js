@@ -4,6 +4,7 @@ agents.Fn('parse', function(response)
 {
     let text = response?.data?.response?.trim() || '';
 
+    text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
     text = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '');
 
     const match = text.match(/\{[\s\S]*\}/);

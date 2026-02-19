@@ -1,57 +1,44 @@
-import divhunt from 'divhunt';
 import agents from '#agents/load.js';
 
 agents.Item({
-    id: 'orchestrator-properties',
-    name: 'Orchestrator Properties',
-    description: 'Maps data from state to agent input schema',
+    id: 'orchestrator-reference',
+    name: 'Orchestrator Reference',
+    description: 'Maps unmatched fields to data references using structure keys',
     instructions: `
-        Property mapper. Map data references to agent input schema.
+        Match agent input fields to available data using the structure map.
 
-        FOR EACH FIELD IN AGENT INPUT SCHEMA:
-        1. If schema field has "value" property → use that value directly
-        2. If data exists → use reference string "@{agent-id}.{path}"
-        3. If no match → use null
+        The structure map shows which keys exist under each data source — no actual values.
+        Your job: find the best matching key path for each unmatched field.
 
-        CRITICAL:
-        - NEVER copy actual data, ONLY output reference strings
-        - References are short strings like "@discord:read.messages"
-        - Output must be small: { properties: { field: "@ref" or value or null } }
+        RULES:
+        1. Look at each field in the agent's input schema
+        2. Find the best matching key in the structure map
+        3. Return a reference string: @{source}.{key}
+        4. If no match exists → use null
+
+        OUTPUT FORMAT:
+        { "properties": { "fieldName": "@source.key" }, "conclusion": "Done: ..." }
 
         EXAMPLES:
-        - messages array exists in discord:read → "@discord:read.messages"
-        - channel string exists in discord:read → "@discord:read.channel"
-        - schema has value: 100 → 100
-        - no data found → null
+        - Agent needs "german", structure has translate-german: ["translation"] → { "properties": { "german": "@translate-german.translation" } }
+        - Agent needs "text", structure has input: ["text"] → { "properties": { "text": "@input.text" } }
+        - No match → { "properties": { "field": null } }
     `,
-    tokens: 1000,
+    tokens: 500,
     input: {
         agent: {
             type: 'object',
-            description: 'Target agent definition (id, name, description, input)'
+            description: 'Target agent (id, name, description, input schema)'
         },
-        data: {
+        structure: {
             type: 'object',
-            description: 'Available data from previous agents'
+            description: 'Available data keys by source (no values, just key names)'
         }
     },
     output: {
         properties: {
             type: 'object',
-            description: 'Mapped input properties for the agent'
-        }
-    },
-    callback: async function({input, output})
-    {
-        for (const [key, value] of Object.entries(output.properties || {}))
-        {
-            if (typeof value !== 'string' || !value.startsWith('@'))
-            {
-                continue;
-            }
-
-            const expression = value.slice(1).replace(/^([^.]+)/, "data['$1']");
-            output.properties[key] = divhunt.Function(expression, { data: input.data || {} }, true);
+            description: 'Mapped references for each field'
         }
     }
 });

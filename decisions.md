@@ -52,3 +52,72 @@
 **Rejected alternatives:**
 - Private repo, open later — delays portfolio building, no community benefit early on
 **Context:** Dejan already has the framework on GitHub. Adding Agents creates a portfolio that 99% of developers can't match: full-stack framework + AI orchestrator + production SaaS. Worst case: great portfolio. Best case: great portfolio + revenue + community.
+
+---
+
+## D006 — Divhunt Framework V2 as foundation
+**Date:** 2026-02-19
+**Decision:** Use Divhunt Framework V2 via npm (`divhunt@^2.0.0`) as the project foundation.
+**Reason:** Addon system maps perfectly to the agent/orchestrator architecture. Built-in HTTP server, data validation (DataDefine), command system. No need to reinvent.
+**Rejected alternatives:**
+- Plain Node.js + Express — more setup, no addon abstraction, would duplicate framework capabilities
+**Context:** Framework is Dejan's own creation, deep familiarity. Agents project proves the framework works for real products.
+
+---
+
+## D007 — Extract parse and request as standalone functions
+**Date:** 2026-02-19
+**Decision:** Move `parse` (JSON sanitizer) and `request` (AI API call) out of `item.run` into separate `agents.Fn()` functions.
+**Reason:** Both are pure utilities with no agent context dependency. Cleaner separation, reusable, easier to test.
+**Rejected alternatives:**
+- Keep everything in item.run — works but 270+ line function, harder to read
+**Context:** Orchestrator methods were NOT extracted because they all depend on shared state/item context.
+
+---
+
+## D008 — Import aliases for addon paths
+**Date:** 2026-02-19
+**Decision:** Use Node.js subpath imports (`#agents/*`, `#orchestrator/*`) defined in package.json instead of relative paths.
+**Reason:** Cleaner imports across the project. `#agents/load.js` instead of `../../../../agents/back/load.js`.
+**Context:** Follows the same pattern Divhunt Framework uses internally.
+
+---
+
+## D009 — Orchestrator initial data under `input` key
+**Date:** 2026-02-19
+**Decision:** Initial data passed to orchestrator stored as `state.data.input` instead of spread on root.
+**Reason:** Consistent with how agent outputs are stored (`state.data[agent-id]`). Properties agent can reference initial data as `@input.topic` using the same `@{key}.{path}` pattern as `@research.facts`.
+**Rejected alternatives:**
+- Spread on root (`state.data = { ...data }`) — breaks the `@{key}.{path}` reference pattern, properties agent can't map it
+**Status:** Implemented. Superseded by D010 hybrid approach.
+
+---
+
+## D010 — Hybrid properties mapping (programmatic + AI fallback)
+**Date:** 2026-02-19
+**Decision:** Split properties mapping into two phases: (1) programmatic name-matching first, (2) AI fallback only for unmatched fields.
+**Reason:** Ministral 14B (nue.tools) is unreliable for full properties mapping — fails on number types (test 4), sometimes returns empty objects. Programmatic matching handles 80%+ of cases (exact field name match across state data). AI only needs to handle semantic mismatches (e.g. `german` → `translate-german.translation`) and goal/context extraction.
+**Rejected alternatives:**
+- Pure AI mapping — unreliable on small models, overkill for exact name matches
+- Pure programmatic mapping — can't handle semantic mismatches or context-derived values
+**Context:** Tested across 5 scenarios. Tests 1, 3, 4 (exact name matches) work programmatically. Test 2 (semantic mapping) needs AI. Hybrid gives reliability where possible, AI where needed.
+**Status:** Superseded by D012 (split into reference + literal agents).
+
+---
+
+## D011 — Separate state.input and state.output
+**Date:** 2026-02-19
+**Decision:** Replace flat `state.data` with `state.input` (initial data) and `state.output` (agent results).
+**Reason:** Flat structure risked key collisions — an agent with `id: 'input'` would overwrite initial data. Separating eliminates collision entirely.
+**Rejected alternatives:**
+- Keep flat structure with reserved key validation — fragile, error-prone
+
+---
+
+## D012 — Split properties into reference + literal agents
+**Date:** 2026-02-19
+**Decision:** Replace single properties agent with 4-step pipeline: (1) programmatic name-match, (2) reference agent for semantic key mapping, (3) literal agent for goal extraction, (4) schema `value` as default fallback.
+**Reason:** Each AI agent does one focused task instead of two mixed tasks. Reference agent receives only structure (key names, no values) — fewer tokens, no data mutation risk. Literal agent reads goal text only. Schema defaults moved to last position so goal values can override them.
+**Rejected alternatives:**
+- Single combined agent — mixed instructions, less reliable on small models
+- Two agents without programmatic — unnecessary AI calls for exact name matches
