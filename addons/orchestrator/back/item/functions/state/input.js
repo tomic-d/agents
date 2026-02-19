@@ -8,7 +8,7 @@ orchestrator.Fn('item.state.input', async function(item, state)
     const schema = agent.Get('input');
 
     const matched   = {};
-    const unmatched = [];
+    let   unmatched = [];
     const defaults  = {};
 
     this.methods.programmatic = () =>
@@ -87,7 +87,8 @@ orchestrator.Fn('item.state.input', async function(item, state)
 
         const result = await reference.Fn('run', `Map references for ${agent.Get('id')}`, {
             task: state.task,
-            agent: this.methods.definition(),
+            agent: { id: agent.Get('id'), description: agent.Get('description') },
+            fields: this.methods.definition(),
             structure
         });
 
@@ -125,7 +126,8 @@ orchestrator.Fn('item.state.input', async function(item, state)
 
         const result = await literal.Fn('run', `Extract values for ${agent.Get('id')}`, {
             task: state.task,
-            agent: this.methods.definition(),
+            agent: { id: agent.Get('id'), description: agent.Get('description') },
+            fields: this.methods.definition(),
             goal: state.goal,
             history: state.history.map(({ output, input, ...rest }) => rest)
         });
@@ -161,11 +163,13 @@ orchestrator.Fn('item.state.input', async function(item, state)
     if (unmatched.length > 0)
     {
         await this.methods.reference();
+        unmatched = unmatched.filter(field => matched[field] === undefined);
     }
 
     if (unmatched.length > 0)
     {
         await this.methods.literal();
+        unmatched = unmatched.filter(field => matched[field] === undefined);
     }
 
     for (const field of unmatched)

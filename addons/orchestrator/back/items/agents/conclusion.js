@@ -11,7 +11,8 @@ agents.Item({
         1. Max 15 words
         2. Describe ONLY what this agent produced, not the broader task
         3. Base your summary strictly on the output fields, do not assume or add steps that did not happen
-        4. No markdown, no formatting, plain text only
+        4. Do NOT describe data format or structure (no "list", "bullet", "formatted", "JSON", etc.)
+        5. No markdown, no formatting, plain text only
     `,
     tokens: 100,
     input: {

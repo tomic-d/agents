@@ -15,7 +15,7 @@ agents.Item({
         2. History conclusions contain key information from previous steps
         3. For each field, extract the value from goal or history
         4. Match the expected type from the field schema
-        5. If no value can be found → use null
+        5. If no value can be found → omit the field entirely
     `,
     tokens: 500,
     input: {
@@ -25,7 +25,11 @@ agents.Item({
         },
         agent: {
             type: 'object',
-            description: 'Target agent (id, name, description, input schema)'
+            description: 'Target agent (id and description)'
+        },
+        fields: {
+            type: 'object',
+            description: 'Unmatched input fields (field name → type and description)'
         },
         goal: {
             type: 'string',

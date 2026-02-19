@@ -177,7 +177,7 @@ agents.Fn('item.run', async function(agent, goal, data = {})
         const result = await agents.Fn('request', payload);
         const meta   = this.methods.metadata(result);
 
-        console.log(result);
+        console.log(result.choices[0].message);
 
         let parsed = agents.Fn('parse', result);
 

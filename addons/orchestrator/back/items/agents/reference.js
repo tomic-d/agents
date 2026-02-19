@@ -13,7 +13,7 @@ agents.Item({
         RULES:
         1. Compare field type and description with available references
         2. Copy the reference key exactly as the value
-        3. If no match exists → use null
+        3. If no match exists → omit the field entirely
     `,
     tokens: 500,
     input: {
@@ -23,11 +23,15 @@ agents.Item({
         },
         agent: {
             type: 'object',
-            description: 'Target agent (id, name, description, input schema)'
+            description: 'Target agent (id and description)'
+        },
+        fields: {
+            type: 'object',
+            description: 'Unmatched input fields (field name → type and description)'
         },
         structure: {
             type: 'object',
-            description: 'Available data keys by source with type and description (no actual values)'
+            description: 'Available data references (source:key → type and description)'
         }
     },
     output: {

@@ -7,9 +7,16 @@ orchestrator.Fn('item.state.done', async function(item, state)
     
     const conclusions = state.history.map(({ agent, conclusion }) => ({ agent, conclusion }));
 
-    const results = await agent.Fn('run', `Check: ${state.task}`, {
+    const results = await agent.Fn('run', `Is task achieved: ${state.task}`, {
         task: state.task,
+        agents: state.agents,
         conclusions
+    });
+
+    console.log({
+        task: state.task,
+        conclusions,
+        done: results.done
     });
 
     state.done = results.done;
