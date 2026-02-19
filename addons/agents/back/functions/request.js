@@ -2,12 +2,22 @@ import agents from '#agents/addon.js';
 
 agents.Fn('request', async function(payload, retry = true)
 {
+    const url = process.env.AI_URL;
+    const key = process.env.AI_KEY;
+
     try
     {
-        const response = await fetch('https://nue.tools.divhunt.com/api/run/ai-chat',
+        const headers = { 'Content-Type': 'application/json' };
+
+        if (key)
+        {
+            headers['Authorization'] = `Bearer ${key}`;
+        }
+
+        const response = await fetch(url,
         {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify(payload)
         });
 

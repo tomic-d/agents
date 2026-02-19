@@ -15,12 +15,6 @@ agents.Fn('item.run', async function(agent, goal, data = {})
             }
         }
 
-        schema.conclusion = {
-            type: 'string',
-            required: true,
-            description: 'Status message: "Done: [what was accomplished]" - signals task complete, ready for next step'
-        };
-
         return schema;
     };
 
@@ -33,15 +27,37 @@ agents.Fn('item.run', async function(agent, goal, data = {})
 
         if (Object.keys(agent.Get('input')).length > 0)
         {
-            system += '\nInput schema: ' + JSON.stringify(agent.Get('input'));
+            const shape = {};
+
+            for (const [key, value] of Object.entries(agent.Get('input')))
+            {
+                const type = value.type || 'string';
+                const prefix = value.required ? '*' : '';
+
+                shape[key] = value.description ? `${prefix}${type} - ${value.description}` : `${prefix}${type}`;
+            }
+
+            system += '\nInput schema: ' + JSON.stringify(shape);
         }
 
         if (Object.keys(schema).length > 0)
         {
-            system += '\nOutput schema: ' + JSON.stringify(schema);
+            const shape = {};
+
+            for (const [key, value] of Object.entries(schema))
+            {
+                const type = value.type || 'string';
+                const prefix = value.required ? '*' : '';
+
+                shape[key] = value.description ? `${prefix}${type} - ${value.description}` : `${prefix}${type}`;
+            }
+
+            system += '\nOutput schema: ' + JSON.stringify(shape);
         }
 
-        system += '\n\nREQUIRED: Always include "conclusion" field with "Done: [what was accomplished]"';
+        system += '\n\nFields prefixed with * are required. Schema descriptions define allowed values and constraints. Follow them exactly.';
+        system += '\nRESPOND WITH A SINGLE-LINE JSON OBJECT. No newlines, no tabs, no formatting. Flat inline JSON only.';
+        system += `\nIMPORTANT: Keep your response under ${agent.Get('tokens')} tokens. Be concise.`;
 
         return system;
     };
@@ -91,18 +107,21 @@ agents.Fn('item.run', async function(agent, goal, data = {})
 
     this.methods.payload = (agent, data, goal) =>
     {
+        const model = process.env.AI_MODEL;
+
         const schema = this.methods.schema(agent);
         const system = this.methods.system(agent, schema);
         const content = this.methods.content(agent, data, goal);
         const format = this.methods.format(agent, schema);
 
         return {
+            model,
             messages: [
                 { role: 'system', content: system },
                 { role: 'user', content: content }
             ],
-            max_tokens: agent.Get('tokens'),
-            temperature: 0,
+            max_tokens: 15000,
+            temperature: 0.7,
             top_p: 0.1,
             response_format: format
         };
@@ -110,18 +129,24 @@ agents.Fn('item.run', async function(agent, goal, data = {})
 
     this.methods.metadata = (result) =>
     {
-        const time = parseFloat(result.time);
-        const total = result.data.usage.total_tokens;
-        const tps = time > 0 ? (total / (time / 1000)).toFixed(2) : 0;
+        /* nue.tools format */
+        const usage = result.data?.usage || result.usage;
+
+        if (!usage)
+        {
+            return { time: '0ms', usage: { prompt: 0, completion: 0, total: 0 }, tps: 0 };
+        }
+
+        const prompt = usage.prompt_tokens || 0;
+        const completion = usage.completion_tokens || 0;
+        const total = usage.total_tokens || prompt + completion;
+        const time = parseFloat(result.time || 0);
+        const tps = time > 0 ? parseFloat((total / (time / 1000)).toFixed(2)) : 0;
 
         return {
             time: time + 'ms',
-            usage: {
-                prompt: result.data.usage.prompt_tokens,
-                completion: result.data.usage.completion_tokens,
-                total
-            },
-            tps: parseFloat(tps)
+            usage: { prompt, completion, total },
+            tps
         };
     };
 
@@ -152,6 +177,8 @@ agents.Fn('item.run', async function(agent, goal, data = {})
         const result = await agents.Fn('request', payload);
         const meta   = this.methods.metadata(result);
 
+        console.log(result);
+
         let parsed = agents.Fn('parse', result);
 
         if (agent.Get('callback'))
@@ -159,9 +186,16 @@ agents.Fn('item.run', async function(agent, goal, data = {})
             await agent.Get('callback')({ input: validated, output: parsed });
             parsed = this.methods.validate(parsed, agent.Get('output'), 'Output Post-Callback');
         }
-        else 
+        else
         {
             parsed = this.methods.validate(parsed, agent.Get('output'), 'Output');
+        }
+
+        const missing = Object.keys(agent.Get('output')).filter(k => parsed[k] === undefined);
+
+        if (missing.length > 0)
+        {
+            throw new Error(`Missing output fields: ${missing.join(', ')}`);
         }
 
         agent.Get('onSuccess') && await agent.Get('onSuccess')({ payload, parsed, meta });
