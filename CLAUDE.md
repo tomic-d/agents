@@ -117,10 +117,12 @@ Behavior:
 
 ## FILES
 
+All project docs live in `.claude/`.
+
 | File | Purpose | When it changes |
 |---|---|---|
-| brief.md | What, for whom, why, vision, competition | Vision Mode, with approval |
-| architecture.md | Living technical overview of the system | When code/tech stack changes |
-| decisions.md | Decision + why + rejected alternatives | Every decision, immediately |
-| tasks.md | Active tasks, granular | When task is added/completed/changed |
-| progress.md | Milestones, what's done | When a milestone is reached |
+| .claude/brief.md | What, for whom, why, vision, competition | Vision Mode, with approval |
+| .claude/architecture.md | Living technical overview of the system | When code/tech stack changes |
+| .claude/decisions.md | Decision + why + rejected alternatives | Every decision, immediately |
+| .claude/tasks.md | Active tasks, granular | When task is added/completed/changed |
+| .claude/progress.md | Milestones, what's done | When a milestone is reached |
