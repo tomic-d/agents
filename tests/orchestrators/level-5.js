@@ -118,7 +118,7 @@ console.log('\n=== Level 5: Full Pipeline (5 agents, all 4 property steps) ===\n
 orchestrator.Item({
     id: 'level-5',
     task: 'Analyze this article: parse it, extract top 8 keywords, analyze sentiment, categorize it, and write a summary',
-    input: { url: 'https://example.com/articles/ai-revolution-2026' },
+    data: { url: 'https://example.com/articles/ai-revolution-2026' },
     steps: 12,
     agents: ['parse-article', 'extract-keywords', 'sentiment', 'categorize', 'write-summary'],
     onFail: ({ error }) => console.log(`\n  FAILED: ${error.message}`)

@@ -78,7 +78,7 @@ console.log('\n=== Level 6: HTML + CSS Section Builder (4 agents, code generatio
 orchestrator.Item({
     id: 'level-6',
     task: 'Build a full (html/css) dark-themed hero section for a tech startup landing page with a heading, subtitle, and call-to-action button',
-    input: { brief: 'Tech startup landing page hero section. Dark theme. Bold heading, short subtitle, one CTA button. Modern, clean design.' },
+    data: { brief: 'Tech startup landing page hero section. Dark theme. Bold heading, short subtitle, one CTA button. Modern, clean design.' },
     steps: 10,
     agents: ['plan-section', 'write-html', 'write-css', 'combine'],
     onFail: ({ error }) => console.log(`\n  FAILED: ${error.message}`)

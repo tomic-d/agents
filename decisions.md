@@ -166,3 +166,19 @@
 **Decision:** Use thinking/reasoning model (e.g. qwen3-next 80b) for orchestrator agents, fast model for user-defined worker agents.
 **Reason:** Orchestrator agents (done, agent, goal, reference, literal, conclusion) need reasoning to make correct decisions. Worker agents (search, translate, sentiment) do concrete tasks where speed matters more. Tested: 14B model fails on 4+ agent pipelines, thinking 80B model passes all 6 levels cleanly.
 **Context:** Per-agent model config planned as next feature.
+
+---
+
+## D018 — Providers addon for multi-provider AI support
+**Date:** 2026-02-19
+**Decision:** Create a `providers` addon where each provider is an Item with endpoint, key, models, and request/response hooks (`onBeforeRequest`, `onAfterRequest`). Agents reference a provider by id. `request.js` moves from agents to providers.
+**Reason:** System was locked to a single AI endpoint via env vars. Users need to choose different providers (Anthropic, Qwen, Mistral, OpenAI) per agent. Hook-based architecture handles format differences without conditional logic.
+**Design:**
+- Provider Item: id, name, endpoint, key (env var name), default model, models (with tokens/thinking/price), onBeforeRequest, onAfterRequest
+- Universal response: `{ content, reasoning, tokens: { input, output }, time, tps }`
+- `reasoning` extracted from `<think>` tags by provider (not stripped — preserved for frontend display)
+- `time` and `tps` measured by request wrapper (provider-agnostic)
+- `parse.js` becomes pure JSON parser (receives clean content string)
+**Rejected alternatives:**
+- Single format with if/else per provider — doesn't scale, mixing concerns
+- Callback instead of hooks — two focused hooks (before/after) cleaner than one callback doing both

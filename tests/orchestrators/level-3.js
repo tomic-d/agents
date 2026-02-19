@@ -58,7 +58,7 @@ console.log('\n=== Level 3: Translate DE + FR \u2192 Compare (semantic mismatch)
 orchestrator.Item({
     id: 'level-3',
     task: 'Translate "The sun sets behind the mountains" to German and French, then compare which translation is more elegant',
-    input: { text: 'The sun sets behind the mountains' },
+    data: { text: 'The sun sets behind the mountains' },
     steps: 6,
     agents: ['translate-german', 'translate-french', 'compare'],
     onFail: ({ error }) => console.log(`\n  FAILED: ${error.message}`)

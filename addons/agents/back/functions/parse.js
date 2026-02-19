@@ -1,12 +1,9 @@
 import agents from '#agents/addon.js';
 
-agents.Fn('parse', function(response)
+agents.Fn('parse', function(content)
 {
-    let text = response?.choices?.[0]?.message?.content?.trim()
-             || response?.data?.response?.trim()
-             || '';
+    let text = (content || '').trim();
 
-    text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
     text = text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '');
     const match = text.match(/\{[\s\S]*\}/);
 

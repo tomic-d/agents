@@ -60,7 +60,7 @@ console.log('\n=== Level 4: Search → Translate → Format (literal + defaults 
 orchestrator.Item({
     id: 'level-4',
     task: 'First search for 5 articles about machine learning, then translate the results to Spanish, then format the translated results as a bullet list',
-    input: { query: 'machine learning' },
+    data: { query: 'machine learning' },
     steps: 8,
     agents: ['search', 'translate-results', 'format-output'],
     onFail: ({ error }) => console.log(`\n  FAILED: ${error.message}`)

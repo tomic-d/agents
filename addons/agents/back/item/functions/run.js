@@ -1,7 +1,8 @@
 import divhunt from 'divhunt';
 import agents from '#agents/addon.js';
+import providers from '#providers/addon.js';
 
-agents.Fn('item.run', async function(agent, goal, data = {})
+agents.Fn('item.run', async function(agent, data = {})
 {
     this.methods.schema = (agent) =>
     {
@@ -18,6 +19,11 @@ agents.Fn('item.run', async function(agent, goal, data = {})
         return schema;
     };
 
+    this.methods.input = (agent) =>
+    {
+        return { goal: { type: 'string', description: 'Goal to achieve' }, ...agent.Get('input') };
+    };
+
     this.methods.system = (agent, schema) =>
     {
         let system = '=== INSTRUCTIONS (FOLLOW EXACTLY) ===\n\n';
@@ -25,60 +31,49 @@ agents.Fn('item.run', async function(agent, goal, data = {})
 
         system += '\n\n=== SCHEMAS ===\n';
 
-        if (Object.keys(agent.Get('input')).length > 0)
+        const input = this.methods.input(agent);
+
+        if (Object.keys(input).length > 0)
         {
-            const shape = {};
-
-            for (const [key, value] of Object.entries(agent.Get('input')))
-            {
-                const type = value.type || 'string';
-                const prefix = value.required ? '*' : '';
-
-                shape[key] = value.description ? `${prefix}${type} - ${value.description}` : `${prefix}${type}`;
-            }
-
-            system += '\nInput schema: ' + JSON.stringify(shape);
+            system += '\nInput schema: ' + JSON.stringify(input);
         }
 
         if (Object.keys(schema).length > 0)
         {
-            const shape = {};
-
-            for (const [key, value] of Object.entries(schema))
-            {
-                const type = value.type || 'string';
-                const prefix = value.required ? '*' : '';
-
-                shape[key] = value.description ? `${prefix}${type} - ${value.description}` : `${prefix}${type}`;
-            }
-
-            system += '\nOutput schema: ' + JSON.stringify(shape);
+            system += '\nOutput schema: ' + JSON.stringify(schema);
         }
 
-        system += '\n\nFields prefixed with * are required. Schema descriptions define allowed values and constraints. Follow them exactly.';
+        system += '\n\nSchema fields with required: true are mandatory. Follow type and description exactly.';
         system += '\nRESPOND WITH A SINGLE-LINE JSON OBJECT. No newlines, no tabs, no formatting. Flat inline JSON only.';
         system += `\nIMPORTANT: Keep your response under ${agent.Get('tokens')} tokens. Be concise.`;
 
         return system;
     };
 
-    this.methods.context = (agent, data, goal) =>
+    this.methods.context = (agent, data) =>
     {
         const context = agent.Get('context');
 
         if (typeof context === 'function')
         {
-            return context({ data, goal });
+            return context({ data });
         }
 
         return context;
     };
 
-    this.methods.content = (agent, data, goal) =>
+    this.methods.content = async (agent, data) =>
     {
         let content = '';
+        const { goal, ...rest } = data;
 
-        const context = this.methods.context(agent, data, goal);
+        if (goal)
+        {
+            content += '=== GOAL ===\n';
+            content += goal + '\n\n';
+        }
+
+        const context = await this.methods.context(agent, rest);
 
         if (context && Object.keys(context).length > 0)
         {
@@ -86,15 +81,10 @@ agents.Fn('item.run', async function(agent, goal, data = {})
             content += JSON.stringify(context, null, 2) + '\n\n';
         }
 
-        if (Object.keys(data).length > 0)
+        if (Object.keys(rest).length > 0)
         {
-            content += '=== CONTEXT (use this to produce output) ===\n';
-            content += JSON.stringify(data, null, 2) + '\n\n';
-        }
-
-        if (goal)
-        {
-            content += '=== GOAL ===\n' + goal;
+            content += '=== DATA ===\n';
+            content += JSON.stringify(rest, null, 2);
         }
 
         return content.trim();
@@ -105,17 +95,15 @@ agents.Fn('item.run', async function(agent, goal, data = {})
         return { type: 'json_object' };
     };
 
-    this.methods.payload = (agent, data, goal) =>
+    this.methods.payload = async (agent, data) =>
     {
-        const model = process.env.AI_MODEL;
-
         const schema = this.methods.schema(agent);
         const system = this.methods.system(agent, schema);
-        const content = this.methods.content(agent, data, goal);
+        const content = await this.methods.content(agent, data);
         const format = this.methods.format(agent, schema);
 
         return {
-            model,
+            model: agent.Get('model'),
             messages: [
                 { role: 'system', content: system },
                 { role: 'user', content: content }
@@ -124,29 +112,6 @@ agents.Fn('item.run', async function(agent, goal, data = {})
             temperature: 0.7,
             top_p: 0.1,
             response_format: format
-        };
-    };
-
-    this.methods.metadata = (result) =>
-    {
-        /* nue.tools format */
-        const usage = result.data?.usage || result.usage;
-
-        if (!usage)
-        {
-            return { time: '0ms', usage: { prompt: 0, completion: 0, total: 0 }, tps: 0 };
-        }
-
-        const prompt = usage.prompt_tokens || 0;
-        const completion = usage.completion_tokens || 0;
-        const total = usage.total_tokens || prompt + completion;
-        const time = parseFloat(result.time || 0);
-        const tps = time > 0 ? parseFloat((total / (time / 1000)).toFixed(2)) : 0;
-
-        return {
-            time: time + 'ms',
-            usage: { prompt, completion, total },
-            tps
         };
     };
 
@@ -167,19 +132,23 @@ agents.Fn('item.run', async function(agent, goal, data = {})
         }
     };
 
-    const validated = this.methods.validate(data, agent.Get('input'), 'Input');
-    const payload = this.methods.payload(agent, validated, goal);
+    const validated = this.methods.validate(data, this.methods.input(agent), 'Input');
+    const payload = await this.methods.payload(agent, validated);
+
+    const providerId = agent.Get('provider');
+    const provider = providerId ? providers.ItemGet(providerId) : providers.Fn('default');
+
+    if (!provider)
+    {
+        throw new Error(`Provider not found: ${providerId || 'default'}`);
+    }
 
     try
     {
         agent.Get('onRun') && await agent.Get('onRun')({ payload });
 
-        const result = await agents.Fn('request', payload);
-        const meta   = this.methods.metadata(result);
-
-        console.log(result.choices[0].message);
-
-        let parsed = agents.Fn('parse', result);
+        const result = await provider.Fn('request', payload);
+        let parsed = agents.Fn('parse', result.content);
 
         if (agent.Get('callback'))
         {
@@ -198,9 +167,16 @@ agents.Fn('item.run', async function(agent, goal, data = {})
             throw new Error(`Missing output fields: ${missing.join(', ')}`);
         }
 
+        const meta = {
+            time: result.time,
+            tokens: result.tokens,
+            tps: result.tps,
+            reasoning: result.reasoning
+        };
+
         agent.Get('onSuccess') && await agent.Get('onSuccess')({ payload, parsed, meta });
 
-        parsed.meta = meta;
+        parsed._meta = meta;
 
         return parsed;
     }

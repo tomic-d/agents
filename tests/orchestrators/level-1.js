@@ -28,7 +28,7 @@ console.log('\n=== Level 1: Single Agent (Email Classifier) ===\n');
 orchestrator.Item({
     id: 'level-1',
     task: 'Classify this email into one of provided categories',
-    input: {
+    data: {
         subject: 'Invoice #4521 — Payment overdue',
         body: 'Dear customer, this is PERSONAL work and your invoice of 2,450 EUR is 15 days overdue. Please process payment immediately to avoid late fees.'
     },
@@ -43,8 +43,7 @@ try
 {
     const state = await orch.Fn('run');
 
-    console.log('\n  result:', JSON.stringify({ priority: state.output?.priority, category: state.output?.category }));
-    console.log('\nPASS');
+    console.log(state);
 }
 catch (error)
 {

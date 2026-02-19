@@ -11,7 +11,8 @@
   },
   "imports": {
     "#agents/*": "./addons/agents/back/*",
-    "#orchestrator/*": "./addons/orchestrator/back/*"
+    "#orchestrator/*": "./addons/orchestrator/back/*",
+    "#providers/*": "./addons/providers/back/*"
   },
   "dependencies": {
     "divhunt": "^2.0.1"

@@ -9,6 +9,7 @@ const agents = divhunt.Addon('ai.agents', (addon) =>
     addon.Field('context', ['object|function', {}]);
     addon.Field('commands', ['array', []]);
     addon.Field('tokens', ['number', 8000]);
+    addon.Field('provider', ['string', '']);
     addon.Field('model', ['string', '']);
     addon.Field('input', ['object', {}]);
     addon.Field('output', ['object', {}]);

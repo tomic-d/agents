@@ -5,13 +5,20 @@ orchestrator.Fn('item.state.goal', async function(item, state)
 {
     const agent = agents.ItemGet('orchestrator-goal');
 
-    const results = await agent.Fn('run', `Write goal for: ${state.agent}`, {
+    const sent = {
         task: state.task,
-        agent: state.agent,
+        agent: state.agents.find(a => a.id === state.agent),
         history: state.history.map(({ output, input, ...rest }) => rest)
-    });
+    };
+
+    const results = await agent.Fn('run', sent);
 
     state.goal = results.goal;
+
+    if (state.debug)
+    {
+        state.debug(`step-${state.step}/goal`, { sent, received: results });
+    }
 
     return results;
 });

@@ -3,6 +3,7 @@ import agents from '#agents/load.js';
 agents.Item({
     id: 'orchestrator-conclusion',
     name: 'Orchestrator Conclusion',
+    model: 'devstral-small-2:24b-cloud',
     description: 'Writes a final summary of what was accomplished',
     instructions: `
         Summarize what was done in one short sentence, past tense.
@@ -21,8 +22,8 @@ agents.Item({
             description: 'Original task to accomplish'
         },
         agent: {
-            type: 'string',
-            description: 'ID of the agent that just executed'
+            type: 'object',
+            description: 'Agent that just executed (id and description)'
         },
         history: {
             type: 'array',

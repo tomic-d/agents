@@ -3,17 +3,17 @@ import agents from '#agents/load.js';
 agents.Item({
     id: 'orchestrator-literal',
     name: 'Orchestrator Literal',
-    description: 'Extracts literal values from goal text for unmatched fields',
+    description: 'Extracts literal values from task and history for unmatched fields',
     instructions: `
-        Extract values for agent input fields from the goal text and execution history.
+        Extract values for agent input fields from the task and execution history.
 
-        These fields could not be found in any data source. Your job: read the goal
+        These fields could not be found in any data source. Your job: read the task
         and history to extract or derive the correct value for each field.
 
         RULES:
-        1. Read the goal text and history carefully
+        1. Read the task and history carefully
         2. History conclusions contain key information from previous steps
-        3. For each field, extract the value from goal or history
+        3. For each field, extract the value from task or history
         4. Match the expected type from the field schema
         5. If no value can be found → omit the field entirely
     `,
@@ -31,13 +31,9 @@ agents.Item({
             type: 'object',
             description: 'Unmatched input fields (field name → type and description)'
         },
-        goal: {
-            type: 'string',
-            description: 'Current step goal'
-        },
         history: {
             type: 'array',
-            description: 'Execution history (agent, goal, conclusion per step)'
+            description: 'Execution history (agent, conclusion per step)'
         }
     },
     output: {

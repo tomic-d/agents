@@ -13,6 +13,28 @@ orchestrator.Fn('item.state.input', async function(item, state)
 
     this.methods.programmatic = () =>
     {
+        const pool = [];
+
+        for (const entry of state.history)
+        {
+            if (!entry.output) continue;
+
+            for (const key of Object.keys(entry.output))
+            {
+                if (key !== '_meta') pool.push(key);
+            }
+        }
+
+        const data = item.Get('data');
+
+        if (data)
+        {
+            for (const key of Object.keys(data))
+            {
+                pool.push(key);
+            }
+        }
+
         for (const [field, definition] of Object.entries(schema))
         {
             if (definition.value !== undefined)
@@ -20,11 +42,20 @@ orchestrator.Fn('item.state.input', async function(item, state)
                 defaults[field] = definition.value;
             }
 
+            const pattern = new RegExp(field);
+            const similar = pool.filter(key => pattern.test(key));
+
+            if (similar.length !== 1)
+            {
+                unmatched.push(field);
+                continue;
+            }
+
             for (let i = state.history.length - 1; i >= 0; i--)
             {
                 const output = state.history[i].output;
 
-                if (output && output[field] !== undefined && field !== 'meta')
+                if (output && output[field] !== undefined && field !== '_meta')
                 {
                     matched[field] = output[field];
                     break;
@@ -33,11 +64,9 @@ orchestrator.Fn('item.state.input', async function(item, state)
 
             if (matched[field] === undefined)
             {
-                const input = item.Get('input');
-
-                if (input && input[field] !== undefined)
+                if (data && data[field] !== undefined)
                 {
-                    matched[field] = input[field];
+                    matched[field] = data[field];
                 }
             }
 
@@ -52,9 +81,9 @@ orchestrator.Fn('item.state.input', async function(item, state)
     {
         const reference = agents.ItemGet('orchestrator-reference');
 
-        /* Build structure map — keys with type/description, no values */
+        /* Build references map — agent:step:key format */
 
-        const structure = {};
+        const references = {};
 
         for (const entry of state.history)
         {
@@ -65,42 +94,50 @@ orchestrator.Fn('item.state.input', async function(item, state)
 
             for (const key of Object.keys(entry.output))
             {
-                if (key === 'meta') continue;
+                if(key === '_meta')
+                {
+                    continue;
+                }
 
-                const definition = output[key];
-                const description = definition?.description;
-                const type = definition?.type || typeof entry.output[key];
-                const prefix = definition?.required ? '*' : '';
+                const ref = output[key] || { type: typeof entry.output[key] };
+                const val = entry.output[key];
+                const preview = JSON.stringify(val);
 
-                structure[`${entry.agent}:${key}`] = description ? `${prefix}${type} - ${description}` : `${prefix}${type}`;
+                ref.preview = preview.length > 500 ? preview.slice(0, 500) + '…' : preview;
+
+                references[`${entry.agent}:${entry.step}:${key}`] = ref;
             }
         }
 
-        const original = item.Get('input');
+        const original = item.Get('data');
 
         for (const key of Object.keys(original))
         {
-            structure[`input:${key}`] = typeof original[key];
+            const preview = JSON.stringify(original[key]);
+
+            references[`data:${key}`] = { type: typeof original[key], description: key, preview: preview.length > 500 ? preview.slice(0, 500) + '…' : preview };
         }
 
         /* Ask AI to map references */
 
-        const result = await reference.Fn('run', `Map references for ${agent.Get('id')}`, {
-            task: state.task,
+        const result = await reference.Fn('run', {
+            goal: state.goal,
+            step: state.step,
             agent: { id: agent.Get('id'), description: agent.Get('description') },
             fields: this.methods.definition(),
-            structure
+            references,
+            history: state.history.map(({ output, input, ...rest }) => rest)
         });
 
-        /* Resolve references against actual data */
+        /* Resolve references — agent:step:key format */
 
-        const sources = { input: original };
+        const sources = { data: original };
 
         for (const entry of state.history)
         {
             if (entry.output)
             {
-                sources[entry.agent] = entry.output;
+                sources[`${entry.agent}:${entry.step}`] = entry.output;
             }
         }
 
@@ -110,7 +147,9 @@ orchestrator.Fn('item.state.input', async function(item, state)
 
             if (typeof mapping === 'string' && mapping.includes(':'))
             {
-                const [source, key] = mapping.split(':');
+                const parts = mapping.split(':');
+                const key = parts.pop();
+                const source = parts.join(':');
 
                 if (sources[source] && sources[source][key] !== undefined)
                 {
@@ -124,11 +163,10 @@ orchestrator.Fn('item.state.input', async function(item, state)
     {
         const literal = agents.ItemGet('orchestrator-literal');
 
-        const result = await literal.Fn('run', `Extract values for ${agent.Get('id')}`, {
+        const result = await literal.Fn('run', {
             task: state.task,
             agent: { id: agent.Get('id'), description: agent.Get('description') },
             fields: this.methods.definition(),
-            goal: state.goal,
             history: state.history.map(({ output, input, ...rest }) => rest)
         });
 
@@ -147,29 +185,29 @@ orchestrator.Fn('item.state.input', async function(item, state)
 
         for (const field of unmatched)
         {
-            const definition = schema[field];
-            const description = definition?.description;
-            const type = definition?.type || 'string';
-            const prefix = definition?.required ? '*' : '';
-
-            fields[field] = description ? `${prefix}${type} - ${description}` : `${prefix}${type}`;
+            fields[field] = schema[field] || { type: 'string' };
         }
 
         return fields;
     };
 
+    const debug = {};
+
     this.methods.programmatic();
+    debug.programmatic = { matched: { ...matched }, unmatched: [...unmatched] };
 
     if (unmatched.length > 0)
     {
         await this.methods.reference();
         unmatched = unmatched.filter(field => matched[field] === undefined);
+        debug.reference = { matched: { ...matched }, unmatched: [...unmatched] };
     }
 
     if (unmatched.length > 0)
     {
         await this.methods.literal();
         unmatched = unmatched.filter(field => matched[field] === undefined);
+        debug.literal = { matched: { ...matched }, unmatched: [...unmatched] };
     }
 
     for (const field of unmatched)
@@ -181,4 +219,10 @@ orchestrator.Fn('item.state.input', async function(item, state)
     }
 
     state.input = divhunt.DataDefine(matched, agent.Get('input'));
+
+    if (state.debug)
+    {
+        debug.resolved = state.input;
+        state.debug(`step-${state.step}/input`, debug);
+    }
 });
