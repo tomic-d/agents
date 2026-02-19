@@ -17,9 +17,9 @@ agents.Item({
     `,
     tokens: 100,
     input: {
-        task: {
+        goal: {
             type: 'string',
-            description: 'Original task to accomplish'
+            description: 'Goal for this specific step'
         },
         agent: {
             type: 'object',

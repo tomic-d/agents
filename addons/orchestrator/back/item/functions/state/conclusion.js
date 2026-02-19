@@ -8,7 +8,7 @@ orchestrator.Fn('item.state.conclusion', async function(item, state)
     const { _meta, ...output } = state.output || {};
 
     const sent = {
-        task: state.task,
+        goal: state.goal,
         agent: state.agents.find(a => a.id === state.agent),
         history: state.history.map(({ output, input, ...rest }) => rest),
         output
