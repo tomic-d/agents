@@ -1,0 +1,20 @@
+{
+  "name": "agents",
+  "version": "0.1.0",
+  "description": "Open-source AI automation platform. Build, connect, and orchestrate intelligent agents.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Dejan Tomic <hi@iamdejan.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tomic-d/agents.git"
+  },
+  "imports": {
+    "#agents/*": "./addons/agents/back/*",
+    "#orchestrator/*": "./addons/orchestrator/back/*",
+    "#providers/*": "./addons/providers/back/*"
+  },
+  "dependencies": {
+    "@onetype/framework": "^2.0.0"
+  }
+}
